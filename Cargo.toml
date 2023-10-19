@@ -1,0 +1,22 @@
+[package]
+name = "tokio-unix-tcp"
+description = "Unified Unix domain socket and TCP socket types for Tokio"
+authors = ["networkException <git@nwex.de>"]
+version = "0.1.0"
+edition = "2021"
+license = "BSD-2-Clause OR MIT"
+homepage = "https://nwex.de/"
+repository = "https://github.com/networkException/tokio-unix-tcp"
+readme = "README.md"
+
+[dependencies]
+mio = { version = "0.8.8", features = ["net"] }
+serde = { version = "1.0.188", features = ["derive"], optional = true }
+tokio = { version = "1.32.0", features = ["net"] }
+
+[target.'cfg(unix)'.dependencies]
+tokio-uds = "0.2.7"
+
+[features]
+default = []
+serde = ["dep:serde"]
