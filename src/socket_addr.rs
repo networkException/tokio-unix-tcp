@@ -16,10 +16,11 @@ use std::path::PathBuf;
 use tokio::net::unix;
 
 #[cfg(feature = "serde")]
-use serde::{Serialize, Serializer, Deserializer, de::Error};
+use serde::{Serialize, Deserialize, Deserializer, de::Error};
 
 // NOTE: This enum is used in the signature of functions that also need to
 //       be available on non unix systems (at least for a noop).
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum UnixSocketAddr {
     #[cfg(unix)]
@@ -35,6 +36,7 @@ impl UnixSocketAddr {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum SocketAddr {
     Inet(net::SocketAddr),
@@ -42,6 +44,7 @@ pub enum SocketAddr {
     Unix(UnixSocketAddr),
 }
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum NamedSocketAddr {
     Inet(net::SocketAddr),
@@ -80,6 +83,29 @@ impl SocketAddr {
             ))
         }
     }
+
+    #[cfg_attr(feature = "serde", allow(unused))]
+    #[cfg(feature = "serde")]
+    pub fn deserialize_from_str<'de, D>(deserializer: D) -> Result<SocketAddr, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let string = String::deserialize(deserializer)?;
+        FromStr::from_str(&string).map_err(Error::custom)
+    }
+
+    #[cfg_attr(feature = "serde", allow(unused))]
+    #[cfg(feature = "serde")]
+    pub fn deserialize_from_option_str<'de, D>(deserializer: D) -> Result<Option<SocketAddr>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct Helper(#[serde(deserialize_with = "SocketAddr::deserialize_from_str")] SocketAddr);
+
+        let option = Option::deserialize(deserializer)?;
+        Ok(option.map(|Helper(external)| external))
+    }
 }
 
 impl NamedSocketAddr {
@@ -108,6 +134,29 @@ impl NamedSocketAddr {
             NamedSocketAddr::Unix(path) => SocketAddr::Unix(UnixSocketAddr::Pathname(path)),
         }
     }
+
+    #[cfg_attr(feature = "serde", allow(unused))]
+    #[cfg(feature = "serde")]
+    pub fn deserialize_from_str<'de, D>(deserializer: D) -> Result<NamedSocketAddr, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let string = String::deserialize(deserializer)?;
+        FromStr::from_str(&string).map_err(Error::custom)
+    }
+
+    #[cfg_attr(feature = "serde", allow(unused))]
+    #[cfg(feature = "serde")]
+    pub fn deserialize_from_option_str<'de, D>(deserializer: D) -> Result<Option<NamedSocketAddr>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct Helper(#[serde(deserialize_with = "NamedSocketAddr::deserialize_from_str")] NamedSocketAddr);
+
+        let option = Option::deserialize(deserializer)?;
+        Ok(option.map(|Helper(external)| external))
+    }
 }
 
 impl FromStr for SocketAddr {
@@ -128,46 +177,6 @@ impl FromStr for NamedSocketAddr {
         }
 
         Ok(NamedSocketAddr::Inet(net::SocketAddr::from_str(string)?))
-    }
-}
-
-#[cfg(feature = "serde")]
-impl Serialize for SocketAddr {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        match self {
-            SocketAddr::Inet(inet_socket_addr) => net::SocketAddr::serialize(inet_socket_addr, serializer),
-            #[cfg(unix)]
-            SocketAddr::Unix(UnixSocketAddr::Pathname(pathname)) => PathBuf::serialize(pathname, serializer),
-            #[cfg(unix)]
-            SocketAddr::Unix(UnixSocketAddr::AbstractOrUnnamed) => Err(serde::ser::Error::custom("Cannot serialize UnixSocketAddr::AbstractOrUnnamed"))
-        }
-    }
-}
-
-#[cfg(feature = "serde")]
-impl<'de> serde::Deserialize<'de> for SocketAddr {
-    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let string = String::deserialize(d)?;
-        SocketAddr::from_str(string.as_str()).map_err(Error::custom)
-    }
-}
-
-#[cfg(feature = "serde")]
-impl Serialize for NamedSocketAddr {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        match self {
-            NamedSocketAddr::Inet(inet_socket_addr) => net::SocketAddr::serialize(inet_socket_addr, serializer),
-            #[cfg(unix)]
-            NamedSocketAddr::Unix(path) => PathBuf::serialize(path, serializer),
-        }
-    }
-}
-
-#[cfg(feature = "serde")]
-impl<'de> serde::Deserialize<'de> for NamedSocketAddr {
-    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let string = String::deserialize(d)?;
-        NamedSocketAddr::from_str(string.as_str()).map_err(serde::de::Error::custom)
     }
 }
 
