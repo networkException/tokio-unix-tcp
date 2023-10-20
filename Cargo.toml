@@ -2,7 +2,7 @@
 name = "tokio-unix-tcp"
 description = "Unified Unix domain socket and TCP socket types for Tokio"
 authors = ["networkException <git@nwex.de>"]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "BSD-2-Clause OR MIT"
 homepage = "https://nwex.de/"
