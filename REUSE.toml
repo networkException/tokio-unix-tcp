@@ -1,0 +1,6 @@
+version = 1
+
+[[annotations]]
+path = "**"
+SPDX-License-Identifier = "BSD-2-Clause OR MIT"
+SPDX-FileCopyrightText = "networkException <git@nwex.de>"
